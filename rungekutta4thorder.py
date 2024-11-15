@@ -52,6 +52,12 @@ def angular_momentum(state):
 energies = np.array([hamiltonian(s) for s in states])
 momenta = np.array([angular_momentum(s) for s in states])
 
+final_state = states[-1]
+
+position_difference = np.linalg.norm(final_state[:2] - state0[:2])
+
+print(f"Rozdíl v poloze po jedné periodě: {position_difference:.2e}")
+
 plt.figure(figsize=(12, 6))
 
 plt.subplot(1, 2, 1)
