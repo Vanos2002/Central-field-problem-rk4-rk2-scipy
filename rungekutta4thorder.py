@@ -54,9 +54,8 @@ for step in range(num_steps):
     states.append(next_state)
     times.append(times[-1] + dt)
 
-states = np.array(states)
-
 # Vytvoření "seznamu" hodnot energie (Hamiltoniánu) a momentu hybnosti pro ověření jejich zachování
+states = np.array(states)
 energies = np.array([hamiltonian(s) for s in states])
 momenta = np.array([angular_momentum(s) for s in states])
 
