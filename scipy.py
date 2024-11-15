@@ -2,15 +2,18 @@ import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
+# Definování počátečních podmínek (dle zadání)
 epsilon = 0.7
 x0 = 1 - epsilon
 y0 = 0
 px0 = 0
+# Podmínka pro poč. podmínku při epsilon = 1, jinak bychom dělili nulou
 if epsilon == 1:
     py0 = 1
 else:
     py0 = np.sqrt((1 + epsilon) / (1 - epsilon))
 
+# Zadefinování vystupujících/charakterizujících veličin
 def potential(x, y):
   r = np.sqrt(x**2 + y**2)
   return -1/r
@@ -20,7 +23,8 @@ def hamiltonian(x, y, px, py,):
 
 def angular_momentum(x, y, px, py):
   return x*py - y*px
-
+    
+# Soustava rovnic pohybu
 def equations_of_motion(state, t):
   x, y, px, py = state
 
@@ -31,20 +35,22 @@ def equations_of_motion(state, t):
 
   return[dxdt, dydt, dpxdt, dpydt]
 
-t = np.linspace(0, 2*np.pi, 1000)
+# Časový krok integrace, počet kroků jsme stanovili jako 2π*1E+4, abychom mohli srovnávat s RK4 a RK2
+t = np.linspace(0, 2*np.pi, 62832)
 
+# "Vektor" počátečních podmínek
 initial_state = [x0, y0, px0, py0]
 
 solution = odeint(equations_of_motion, initial_state, t)
 
 x, y, px, py = solution.T
 
-final_state = solution[-1]  # Assuming t[-1] is close to one period
-
+# Rozdíl polohy částice v časech t = 0 a t = T = 2π 
+final_state = solution[-1] 
 position_difference = np.linalg.norm(final_state[:2] - initial_state[:2])
-
 print(f"Rozdíl v poloze po jedné periodě: {position_difference:.2e}")
 
+# Vykreslení trajektorie částice
 plt.plot(x, y)
 plt.xlabel('x')
 plt.ylabel('y')
