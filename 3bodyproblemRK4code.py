@@ -60,7 +60,7 @@ def dynamics(state, t):
     return derivatives
 
 # Integrační kroky
-dt = 100 # Časový krok v sekundách (odpovídající jedné hodině)
+dt = 3600 # Časový krok v sekundách (odpovídající jedné hodině)
 t_max = 365.25 * 24 * 3600  # Perioda jednoho oběhu Země kolem Slunce, odpovída asi pi*10^7 s
 n_steps = int(t_max / dt)  # Počet kroků (odpovídá tedy počtu hodin v nepřestupném roku)
 time = np.linspace(0, t_max, n_steps) # Čas (od, do, přes kolik kroků)
