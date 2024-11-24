@@ -48,7 +48,7 @@ x, y, px, py = solution.T
 # Rozdíl polohy částice v časech t = 0 a t = T = 2π 
 final_state = solution[-1] 
 position_difference = np.linalg.norm(final_state[:2] - initial_state[:2])
-print(f"Rozdíl v poloze po jedné periodě: {position_difference:.2e}")
+print(f"Rozdíl v poloze po jedné periodě oběhu: {position_difference:.2e}")
 
 # Vykreslení trajektorie částice
 plt.plot(x, y)
