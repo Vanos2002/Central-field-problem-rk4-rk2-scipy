@@ -32,27 +32,64 @@ def equations_of_motion(state, t):
     dpydt = -y/np.sqrt((x**2 + y**2)**3)
     return np.array([dxdt, dydt,  dpxdt,  dpydt])
 
-# Zadefinování Runge-Kuttova algoritmu 4. řádu
-def runge_kutta_4(f, state, t, dt):
-    k1 = dt * f(state, t)
-    k2 = dt * f(state + k1 / 2, t + dt / 2)
-    k3 = dt * f(state + k2 / 2, t + dt / 2)
-    k4 = dt * f(state + k3, t + dt)
-    return state + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+def runge_kutta_4_adaptive(f, y0, t_span, args=(), tol=1e-15):
+    t0, t_end = t_span
+    t = [t0]
+    y = [y0]
+    dt = (t_end - t0) / 10000 # Časový krok
 
-# Časový krok, perioda, počet kroků integrace
-dt = 0.0001 
-T = 2 * np.pi  
-num_steps = int(T / dt)  
+    while t[-1] < t_end:
+        current_t = t[-1]
+        current_y = y[-1]
 
-states = [state0]
-times = [0]
+        # Požadujeme, aby poslední krok simulace (jedné periody oběhu) v t_end
+        if current_t + dt > t_end:
+            dt = t_end - current_t
 
-# Vyřešení soustavy ODR pro každý krok
-for step in range(num_steps):
-    next_state = runge_kutta_4(equations_of_motion, states[-1], times[-1], dt)
-    states.append(next_state)
-    times.append(times[-1] + dt)
+        # Konečně definice Runge-Kuttova algoritmu
+        k1 = f(current_y, current_t, *args)
+        k2 = f(current_y + k1 * dt / 2, current_t + dt / 2, *args)
+        k3 = f(current_y + k2 * dt / 2, current_t + dt / 2, *args)
+        k4 = f(current_y + k3 * dt, current_t + dt, *args)
+        y_full_step = current_y + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+
+        # Zpřesnění RK metody pomocí zadefinování půlkroku (lepší aproximace chyby)
+        dt_half = dt / 2
+        k1_half = f(current_y, current_t, *args)
+        k2_half = f(current_y + k1_half * dt_half / 2, current_t + dt_half / 2, *args)
+        k3_half = f(current_y + k2_half * dt_half / 2, current_t + dt_half / 2, *args)
+        k4_half = f(current_y + k3_half * dt_half, current_t + dt_half, *args)
+        y_half_step = current_y + (dt_half / 6) * (k1_half + 2 * k2_half + 2 * k3_half + k4_half)
+
+        # Zadefinování druhého půlkroku
+        current_y_half_step = y_half_step
+        k1_half = f(current_y_half_step, current_t + dt_half, *args)
+        k2_half = f(current_y_half_step + k1_half * dt_half / 2, current_t + 3 * dt_half / 2, *args)
+        k3_half = f(current_y_half_step + k2_half * dt_half / 2, current_t + 3 * dt_half / 2, *args)
+        k4_half = f(current_y_half_step + k3_half * dt_half, current_t + dt, *args)
+        y_two_half_steps = current_y_half_step + (dt_half / 6) * (k1_half + 2 * k2_half + 2 * k3_half + k4_half)
+
+        # Odhad naší chyby
+        error = np.linalg.norm(y_full_step - y_two_half_steps, ord=np.inf)
+
+        # Algoritmus pro snížení časového kroku pro případ, že je chyba vyšší než naše stanovená (tolerovaná) chyba
+        if error > tol:
+            dt *= 0.5
+        else:
+            t.append(current_t + dt)
+            y.append(y_two_half_steps)
+            if error < tol / 4:
+                dt *= 2  # Zvýšíme časový krok pro případ, že by chyba byla mnohem menší než tolerovaná (zde násobíme 2, výše naopak dělíme)
+
+    return np.array(t), np.array(y)
+
+# Integrační parametry
+T = 2 * np.pi
+t_span = (0, T)
+tol = 1e-15  # Maximální chyba, kterou tolerujeme (podlé té se náš časový krok posléze mění)
+
+# Algoritmus pro vyřešení dif. rovnic
+t, states = runge_kutta_4_adaptive(equations_of_motion, state0, t_span, tol=tol)
 
 # Vytvoření "seznamu" hodnot energie (Hamiltoniánu) a momentu hybnosti pro ověření jejich zachování
 states = np.array(states)
@@ -67,18 +104,19 @@ print(f"Rozdíl v poloze po jedné periodě: {position_difference:.2e}")
 # Znázornění trajektorie částice v centrálním poli
 plt.figure(figsize=(12, 6))
 
+# Formality k zobrazení
 plt.subplot(1, 2, 1)
-plt.scatter([0], [0], color="red", label="Centrální těleso")
+plt.scatter([0], [0], color="black", label="Cenrální těleso")
 plt.plot(states[:, 0], states[:, 1])
-plt.title("Trajektorie částice")
+plt.title("Trajektorie částice v centrálním poli")
 plt.xlabel("x")
 plt.ylabel("y")
 plt.axis("equal")
 
-# Znázornění zachovávajícího se Hamiltoniánu (energie) a momentu hybnosti
+# Zobrazení grafů zachování
 plt.subplot(1, 2, 2)
-plt.plot(times, energies, label="Energie")
-plt.plot(times, momenta, label="Moment hybnosti")
+plt.plot(t, energies, label="Hamiltonián")
+plt.plot(t, momenta, label="Moment hybnosti")
 plt.title("Zákony zachování")
 plt.xlabel("Čas")
 plt.legend()
