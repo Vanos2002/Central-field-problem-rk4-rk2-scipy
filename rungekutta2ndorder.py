@@ -32,28 +32,59 @@ def equations_of_motion(state, t):
     dpydt = -y/np.sqrt((x**2 + y**2)**3)
     return np.array([dxdt, dydt,  dpxdt,  dpydt])
 
-# Zadefinování Runge-Kuttova algoritmu 2. řádu
-def runge_kutta_2(f, state, t, dt):
-    k1 =  f(state, t)
-    k2 =  f(state + k1*dt, t + dt)
-    return state + 0.5 * (k1 + k2)*dt
+# Zadefinování adaptivní RK2 metody
+def runge_kutta_2_adaptive(f, y0, t_span, args=(), tol=1e-15):
+    t0, t_end = t_span
+    t = [t0]
+    y = [y0]
+    dt = (t_end - t0) / 10000 # Časový krok
 
-# Časový krok, perioda, počet kroků integrace
-dt = 0.0001 
-T = 2 * np.pi  
-num_steps = int(T / dt)  
+    while t[-1] < t_end:
+        current_t = t[-1]
+        current_y = y[-1]
 
-states = [state0]
-times = [0]
+        # Požadujeme, aby poslední krok simulace (jedné periody oběhu) v t_end
+        if current_t + dt > t_end:
+            dt = t_end - current_t
 
-# Vyřešení soustavy ODR pro každý krok
-for step in range(num_steps):
-    next_state = runge_kutta_2(equations_of_motion, states[-1], times[-1], dt)
-    states.append(next_state)
-    times.append(times[-1] + dt)
+        # Celý krok zadefinovaný pomocí RK2
+        k1 = f(current_y, current_t, *args)
+        k2 = f(current_y + dt * k1/2, current_t + dt/2, *args)
+        y_full_step = current_y + dt * k2
+
+        # 1. půlrok
+        dt_half = dt/2 # Zadefinování poloviny časového kroku
+        k1_half = f(current_y, current_t, *args)
+        k2_half = f(current_y + dt_half * k1_half/2, current_t + dt_half/2, *args)
+        y_half_step = current_y + dt_half * k2_half
+
+        # 2.půlkrok
+        k1_half = f(y_half_step, current_t + dt_half, *args)
+        k2_half = f(y_half_step + dt_half * k1_half/2, current_t + dt_half + dt_half/2, *args)
+        y_two_half_steps = y_half_step + dt_half * k2_half
+        # Odhad naší chyby
+        error = np.linalg.norm(y_full_step - y_two_half_steps, ord=np.inf)
+
+        # Algoritmus pro snížení časového kroku pro případ, že je chyba vyšší než naše stanovená (tolerovaná) chyba
+        if error > tol:
+            dt *= 0.5
+        else:
+            t.append(current_t + dt)
+            y.append(y_two_half_steps)
+            if error < tol / 4:
+                dt *= 2  # Zvýšíme časový krok pro případ, že by chyba byla mnohem menší než tolerovaná (zde násobíme 2, výše naopak dělíme)
+
+    return np.array(t), np.array(y)
+
+# Integrační parametry
+T = 2 * np.pi
+t_span = (0, T)
+tol = 1e-15  # Maximální chyba, kterou tolerujeme (podlé té se náš časovýž krok posléze mění)
+
+# Algoritmus pro vyřešení dif. rovnic
+t, states = runge_kutta_2_adaptive(equations_of_motion, state0, t_span, tol=tol)
 
 # Vytvoření "seznamu" hodnot energie (Hamiltoniánu) a momentu hybnosti pro ověření jejich zachování
-states = np.array(states)
 energies = np.array([hamiltonian(s) for s in states])
 momenta = np.array([angular_momentum(s) for s in states])
 
